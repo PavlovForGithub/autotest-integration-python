@@ -1,0 +1,4 @@
+/.vs
+*__pycache__
+*testit_pytest.egg-info
+*dist
