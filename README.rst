@@ -49,7 +49,7 @@ Usage
 Simple tests
 =============
 
-.. code-block:: python
+.. code:: py
 
     import pytest
     import testit
