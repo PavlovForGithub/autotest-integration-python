@@ -9,6 +9,7 @@ class Api(object):
 		self.url = url
 		self.headers = {'Authorization': 'PrivateToken ' + private_token}
 		mimetypes.add_type('text/plain', '.log')
+		mimetypes.add_type('application/octet-stream', '')
 
 	# AutoTests
 	def create_autotest(self, json):
@@ -18,7 +19,7 @@ class Api(object):
 			print('\nCreate autotest passed!')
 			return response.json()['id']
 		else:
-			print(f"Create autotest error: {response.json()['error']['key']}")
+			raise Exception(f"Create autotest error: {response.json()['error']['key']}")
 
 	def link_autotest(self, autotest_id, workitem_id):
 		response = requests.post(f'{self.url}/api/v2/autoTests/{autotest_id}/workItems', headers=self.headers, json={'id': workitem_id})
@@ -33,7 +34,7 @@ class Api(object):
 			print('\nGet autoTest passed!')
 			return response
 		else:
-			print(f"Get autoTest error: {response.json()['error']['key']}")
+			raise Exception(f"Get autoTest error: {response.json()['error']['key']}")
 
 	def update_autotest(self, json):
 		response = requests.put(self.url + '/api/v2/autoTests', headers=self.headers, json=json)
@@ -41,7 +42,7 @@ class Api(object):
 		if response.status_code == 204:
 			print('Update passed!')
 		else:
-			print(f"Update error: {response.json()['error']['key']}")
+			raise Exception(f"Update error: {response.json()['error']['key']}")
 
 	# TestRuns
 	def create_testrun(self, json):
@@ -50,26 +51,27 @@ class Api(object):
 			print('Create testRun passed!')
 			return response.json()['id']
 		else:
-			print(f"Create testRun error: {response.json()['error']['key']}")
+			raise Exception(f"Create testRun error: {response.json()['error']['key']}")
 
 	def set_results_for_testrun(self, testrun_id, json):
 		response = requests.post(f'{self.url}/api/v2/testRuns/{testrun_id}/testResults', headers=self.headers, json=json)
 		if response.status_code == 200:
 			print('Set results passed!')
-			return response.json()
 		else:
-			print(f"Set results error: {response.json()['error']['key']}")
+			raise Exception(f"Set results error: {response.json()['error']['key']}")
 
 	def testrun_activity(self, testrun_id, action):
 		response = requests.post(f'{self.url}/api/v2/testRuns/{testrun_id}/{action}', headers=self.headers)
 		if response.status_code == 204:
 			print(f'TestRun {action} passed!')
 		else:
-			print(f"TestRun {action} error: {response.json()['error']['key']}")
+			raise Exception(f"TestRun {action} error: {response.json()['error']['key']}")
 
-	def link_attachment(self, test_result_id, file):
-		response = requests.post(f'{self.url}/api/v2/testResults/{test_result_id}/attachments', headers=self.headers, files={'file': (os.path.basename(file.name), file, mimetypes.guess_type(file.name)[0])})
-		if response.status_code == 200:
-			print('Link attachment passed!')
+	def load_attachment(self, file):
+		response = requests.post(f'{self.url}/api/Attachments', headers=self.headers, files={'file': (os.path.basename(file.name), file, mimetypes.guess_type(file.name)[0])})
+		if response.status_code == 201:
+			print(f'Attachment {file.name} loaded!')
+			return response.json()['id']
 		else:
-			print(f"Link attachment error: {response.json()['error']['key']}")
+			print(f"Attachment {file.name} error: {response.json()['error']['key']}")
+			return None

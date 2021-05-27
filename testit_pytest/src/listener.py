@@ -7,6 +7,7 @@ from testit_pytest.utils import step
 import os
 from datetime import datetime
 import inspect
+import re
 
 
 class TestITListener(object):
@@ -17,11 +18,20 @@ class TestITListener(object):
         while not os.path.isfile(f'{path}{os.sep}connection_config.ini') and path != root:
             path = path[:path.rindex(os.sep)]
         path = f'{path}{os.sep}connection_config.ini'
-        if os.path.isfile(path):
-            self.parser = configparser.RawConfigParser()
-            self.parser.read(path)
-        else:
-            raise Exception('File connection_config.ini was not found!')
+        if not os.path.isfile(path):
+            print('File connection_config.ini was not found!')
+            raise SystemExit
+        self.parser = configparser.RawConfigParser()
+        self.parser.read(path)
+        if not re.fullmatch(r'^(?:(?:(?:https?|ftp):)?\/\/)?(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-zA-Z0-9\u00a1-\uffff][a-zA-Z0-9\u00a1-\uffff_-]{0,62})?[a-zA-Z0-9\u00a1-\uffff]\.)+(?:[a-zA-Z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?(?:[/?#]\S*)?$', self.parser.get('testit', 'url')):
+            print('The wrong URL!')
+            raise SystemExit
+        if not re.fullmatch(r'[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}', self.parser.get('testit', 'projectID')):
+            print('The wrong project ID!')
+            raise SystemExit
+        if not re.fullmatch(r'[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}', self.parser.get('testit', 'configurationID')):
+            print('The wrong configuration ID!')
+            raise SystemExit
 
     @pytest.hookimpl
     def pytest_sessionstart(self):
@@ -128,9 +138,10 @@ class TestITListener(object):
             data['tearDownResults'] = tree_teardown_steps['method_results'] + tree_teardown_steps['class_results'] + tree_teardown_steps['module_results'] + tree_teardown_steps['session_results']
 
             data['resultLinks'] = item.result_links if hasattr(item, 'result_links') else []
-            data['duration'] = item.test_duration
+            data['duration'] = item.test_duration if hasattr(item, 'test_duration') else None
             data['traces'] = item.test_traces if hasattr(item, 'test_traces') else None
             data['namespace'] = item.function.__module__
+            data['attachments'] = item.test_attachments if hasattr(item, 'test_attachments') else []
 
             i = item.function.__qualname__.find('.')
             if i != -1:
@@ -202,6 +213,7 @@ class TestITListener(object):
             elif item.function.__doc__:
                 data['autoTestName'] = item.function.__doc__
             else:
+                data['autoTestName'] = 'Test without name'
                 data['testResult'] = 'Failed'
                 data['failureReasonName'] = 'TestDefect'
                 data['traces'] = f'>\n{inspect.getsource(item.function)}\nE {item.originalname} must have @testit.displayName or documentation!\n{item.location[0]}:{item.location[1]}: Exception'
@@ -248,7 +260,6 @@ class TestITListener(object):
         tree_setup_steps = {}
         tree_teardown_steps = {}
         tests_results_data = []
-        data_attachments = []
         for item_id in range(len(session.items)):
             tree_setup_steps = self.form_tree_steps(session.items[item_id], tree_setup_steps, 'setup')
             tree_teardown_steps = self.form_tree_steps(session.items[item_id], tree_teardown_steps, 'teardown')
@@ -320,8 +331,6 @@ class TestITListener(object):
                 for workitem_id in data_item['workItemsID']:
                     self.requests.link_autotest(autotest_id, workitem_id)
 
-                data_attachments.append(session.items[item_id].test_attachments if hasattr(session.items[item_id], 'test_attachments') else [])
-
                 tests_results_data.append(
                     JSONFixture.set_results_for_testrun(
                         data_item['externalID'],
@@ -335,20 +344,15 @@ class TestITListener(object):
                         data_item['duration'],
                         data_item['failureReasonName'],
                         data_item['message'],
-                        None
+                        None,
+                        data_item['attachments']
                     )
                 )
         if tests_results_data:
-            test_results_id = self.requests.set_results_for_testrun(
+            self.requests.set_results_for_testrun(
                 self.testrun_id,
                 tests_results_data
             )
-            for result_id in range(len(test_results_id)):
-                for attachment in data_attachments[result_id]:
-                    self.requests.link_attachment(
-                        test_results_id[result_id],
-                        attachment
-                    )
 
     @testit_pytest.hookimpl
     def add_link(self, link_url, link_title, link_type, link_description):
@@ -366,6 +370,6 @@ class TestITListener(object):
             self.item.test_attachments = []
         for path in attach_paths:
             if os.path.isfile(path):
-                self.item.test_attachments.append(open(path, "rb"))
+                self.item.test_attachments.append({'id': self.requests.load_attachment(open(path, "rb"))})
             else:
                 print(f'File ({path}) not found!')
