@@ -1,4 +1,6 @@
 /.vs
+*.idea
 *__pycache__
-*testit_pytest.egg-info
 *dist
+*.pytest_cache
+*.egg-info
