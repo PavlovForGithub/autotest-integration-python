@@ -14,6 +14,7 @@ If you have any issues or you find someone's behavior unaccaptable, don't heista
 # Set up your environment
 In order to work with source code and run it you need:
  - python 3.4 or higher
+ - pytest
 
 Refer [README](README.rst) file for details
 
