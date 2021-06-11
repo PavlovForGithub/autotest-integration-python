@@ -53,6 +53,14 @@ class Api(object):
 		else:
 			raise Exception(f"Create testRun error: {response.json()['error']['key']}")
 
+	def get_testrun(self, testrun_id):
+		response = requests.get(f'{self.url}/api/v2/testRuns/{testrun_id}', headers=self.headers)
+		if response.status_code == 200:
+			print('Get testRun passed!')
+			return response.json()['projectId'], response.json()['testResults']
+		else:
+			raise Exception(f"Get testRun error: {response.json()['error']['key']}")
+
 	def set_results_for_testrun(self, testrun_id, json):
 		response = requests.post(f'{self.url}/api/v2/testRuns/{testrun_id}/testResults', headers=self.headers, json=json)
 		if response.status_code == 200:
