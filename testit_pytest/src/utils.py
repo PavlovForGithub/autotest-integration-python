@@ -1,6 +1,8 @@
 from functools import wraps
 from datetime import datetime
 from testit_pytest import TestITPluginManager
+import re
+import os
 
 
 def inner(function):
@@ -212,3 +214,30 @@ class step:
         cls.steps_data = []
         cls.steps_data_results = []
         return data, result_data
+
+
+def search_in_environ(variable):
+    if re.fullmatch(r'{[a-zA-Z_]\w*}', variable) and variable[1:-1] in os.environ:
+        return os.environ[variable[1:-1]]
+    return variable
+
+
+def configurations_parser(data_autotests):
+    configurations_array = {}
+    for data_autotest in data_autotests:
+        configurations_array[data_autotest['autoTest']['externalId']] = data_autotest['configurationId']
+    return configurations_array
+
+
+def uuid_check(uuid):
+    if not re.fullmatch(r'[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}', uuid):
+        print(f'The wrong {uuid}!')
+        raise SystemExit
+    return uuid
+
+
+def url_check(url):
+    if not re.fullmatch(r'^(?:(?:(?:https?|ftp):)?//)?(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-zA-Z0-9\u00a1-\uffff][a-zA-Z0-9\u00a1-\uffff_-]{0,62})?[a-zA-Z0-9\u00a1-\uffff]\.)+(?:[a-zA-Z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?(?:[/?#]\S*)?$', url):
+        print('The wrong URL!')
+        raise SystemExit
+    return url

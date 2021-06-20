@@ -85,7 +85,8 @@ class JSONFixture:
 			duration,
 			failure_reason_name,
 			message,
-			parameters
+			parameters,
+			attachments
 		):
 		json = {
 			'configurationId': configuration_id,
@@ -99,6 +100,7 @@ class JSONFixture:
 			'duration': duration,
 			'failureReasonName': failure_reason_name,
 			'message': message,
-			'parameters': parameters
+			'parameters': parameters,
+			'attachments': attachments
 		}
 		return json
