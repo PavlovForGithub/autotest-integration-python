@@ -34,7 +34,7 @@ class TestITListener(object):
             path = os.path.abspath('')
             root = path[:path.index(os.sep)]
             while not os.path.isfile(
-                f'{path}{os.sep}connection_config.ini') and path != root:
+                    f'{path}{os.sep}connection_config.ini') and path != root:
                 path = path[:path.rindex(os.sep)]
             path = f'{path}{os.sep}connection_config.ini'
             if not os.path.isfile(path):
@@ -105,8 +105,8 @@ class TestITListener(object):
                 item.index = index
                 item_id = items.index(item)
                 index = index + 1 if item_id + \
-                                     1 < len(items) and item.originalname == \
-                                     items[item_id + 1].originalname else 0
+                    1 < len(items) and item.originalname == \
+                    items[item_id + 1].originalname else 0
 
                 if (
                     configurations_array
@@ -208,16 +208,16 @@ class TestITListener(object):
                 item_id -= 1
             if hasattr(request.session.items[item_id],
                        f'{fixturedef.scope}_setup_number') and getattr(
-                request.session.items[item_id],
-                f'{fixturedef.scope}_setup_number') != 0:
+                    request.session.items[item_id],
+                    f'{fixturedef.scope}_setup_number') != 0:
                 if not hasattr(request.session.items[item_id],
                                f'test_{fixturedef.scope}_teardown_steps'):
                     setattr(request.session.items[item_id],
                             f'test_{fixturedef.scope}_teardown_steps', [
-                            ] + teardown_steps)
+                    ] + teardown_steps)
                     setattr(request.session.items[item_id],
                             f'test_{fixturedef.scope}_teardown_results_steps', [
-                            ] + teardown_results_steps)
+                    ] + teardown_results_steps)
                 else:
                     setattr(request.session.items[item_id],
                             f'test_{fixturedef.scope}_teardown_steps', getattr(
@@ -269,30 +269,30 @@ class TestITListener(object):
     @staticmethod
     def _get_setup_from(tree_setup_steps):
         return tree_setup_steps['session'] + \
-               tree_setup_steps['module'] + \
-               tree_setup_steps['class'] + \
-               tree_setup_steps['method']
+            tree_setup_steps['module'] + \
+            tree_setup_steps['class'] + \
+            tree_setup_steps['method']
 
     @staticmethod
     def _get_setup_results_from(tree_setup_steps):
         return tree_setup_steps['session_results'] + \
-               tree_setup_steps['module_results'] + \
-               tree_setup_steps['class_results'] + \
-               tree_setup_steps['method_results']
+            tree_setup_steps['module_results'] + \
+            tree_setup_steps['class_results'] + \
+            tree_setup_steps['method_results']
 
     @staticmethod
     def _get_teardown_from(tree_teardown_steps):
         return tree_teardown_steps['method'] + \
-               tree_teardown_steps['class'] + \
-               tree_teardown_steps['module'] + \
-               tree_teardown_steps['session']
+            tree_teardown_steps['class'] + \
+            tree_teardown_steps['module'] + \
+            tree_teardown_steps['session']
 
     @staticmethod
     def _get_teardown_results_from(tree_teardown_steps):
         return tree_teardown_steps['method_results'] + \
-               tree_teardown_steps['class_results'] + \
-               tree_teardown_steps['module_results'] + \
-               tree_teardown_steps['session_results']
+            tree_teardown_steps['class_results'] + \
+            tree_teardown_steps['module_results'] + \
+            tree_teardown_steps['session_results']
 
     @staticmethod
     def _get_result_links_from(item):
@@ -409,7 +409,7 @@ class TestITListener(object):
                 item.function.test_workItemsID[0], item.own_markers,
                 item.array_parametrize_id, item.index)
             if param_id is not None and item.function.test_workItemsID[0][
-                                        1:-1] in \
+                1:-1] in \
                 item.name[item.name.find('[') + 1:item.name.rfind(']')].split(
                     '-')[param_id]:
                 data['workItemsID'] = result
@@ -462,7 +462,7 @@ class TestITListener(object):
         if item.own_markers:
             for mark in item.own_markers:
                 if mark.name == 'skip' or mark.name == 'skipif' and mark.args[
-                    0]:
+                        0]:
                     data['testResult'] = 'Skipped'
                     data['failureReasonName'] = None
                     if mark.kwargs:
@@ -495,13 +495,13 @@ class TestITListener(object):
     def param_attribute_collector(attribute, marks, parametrize_id, index):
         for ID in parametrize_id:
             if attribute[attribute.find('{') + 1:attribute.rfind('}')] in \
-                marks[ID].args[0]:
+                    marks[ID].args[0]:
                 return attribute.split('{')[0] + marks[ID].args[1][index][
                     marks[ID].args[0].split(', ').index(attribute[
                                                         attribute.find(
                                                             '{') + 1:attribute.rfind(
                                                             '}')])] + \
-                       attribute.split('}')[1]
+                    attribute.split('}')[1]
         return attribute
 
     @staticmethod
@@ -516,13 +516,13 @@ class TestITListener(object):
     def attribute_collector_links(link, key, marks, parametrize_id, index):
         for ID in parametrize_id:
             if link[key][link[key].find('{') + 1:link[key].rfind('}')] in \
-                marks[ID].args[0]:
+                    marks[ID].args[0]:
                 return link[key].split('{')[0] + marks[ID].args[1][index][
                     marks[ID].args[0].split(', ').index(link[key][
                                                         link[key].find('{') + 1:
                                                         link[key].rfind(
                                                             '}')])] + \
-                       link[key].split('}')[1]
+                    link[key].split('}')[1]
         return link[key]
 
     @staticmethod

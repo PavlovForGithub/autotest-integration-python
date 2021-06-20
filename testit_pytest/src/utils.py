@@ -1,8 +1,9 @@
-from functools import wraps
-from datetime import datetime
-from testit_pytest import TestITPluginManager
-import re
 import os
+import re
+from datetime import datetime
+from functools import wraps
+
+from testit_pytest import TestITPluginManager
 
 
 def inner(function):

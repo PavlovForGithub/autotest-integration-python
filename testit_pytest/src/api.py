@@ -1,7 +1,9 @@
-import requests
-import os
 import mimetypes
+import os
 from ast import literal_eval
+
+import requests
+
 
 class Api(object):
 
