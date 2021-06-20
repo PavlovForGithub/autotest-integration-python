@@ -40,6 +40,8 @@ Simple connection_config.ini:
         2. open DevTools -> network
         3. go to the project https://{DOMAIN}/projects/20/tests
         4. GET-request configurations, Preview tab, copy id field
+    [debug]
+    testit_proxy = {"http": "http://localhost:8888", "https": "http://localhost:8888"}
 
 Usage in command line:
 
@@ -61,7 +63,8 @@ Usage with a connection_config.ini file in the root directory of the project:
     testrunID = {TEST_RUN_ID}
     url = {URL}
     privatetoken = {PRIVATE_TOKEN}
-
+    # [debug]
+    # testit_proxy = {"http": "http://localhost:8888", "https": "http://localhost:8888"}
 The second option
 ------------------
 
@@ -69,7 +72,7 @@ Usage with command-line parameters in a CI/CD file:
 
 .. code::
 
-    pytest --testit --testrunid=${TEST_RUN_ID} --url=${URL} --privatetoken=${PRIVATE_TOKEN}
+    pytest --testit --testrunid=${TEST_RUN_ID} --url=${URL} --privatetoken=${PRIVATE_TOKEN} --testit_proxy='{"http":"http://localhost:8888","https":"http://localhost:8888"}'
 
 Simple tests
 =============

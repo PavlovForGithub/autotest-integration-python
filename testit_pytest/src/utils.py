@@ -172,10 +172,7 @@ class step:
             self.steps_data = self.step_append(self.steps_data, self.step_stack, self.args[0])
 
     def __exit__(self, exc_type, exc_value, tb):
-        if not exc_type:
-            outcome = 'Passed'
-        else:
-            outcome = 'Failed'
+        outcome = 'Passed' if not exc_type else 'Failed'
         self.steps_data_results = self.result_step_append(
                                     self.steps_data,
                                     self.steps_data_results,
@@ -223,10 +220,10 @@ def search_in_environ(variable):
 
 
 def configurations_parser(data_autotests):
-    configurations_array = {}
-    for data_autotest in data_autotests:
-        configurations_array[data_autotest['autoTest']['externalId']] = data_autotest['configurationId']
-    return configurations_array
+    return {
+        data_autotest['autoTest']['externalId']: data_autotest['configurationId']
+        for data_autotest in data_autotests
+    }
 
 
 def uuid_check(uuid):
