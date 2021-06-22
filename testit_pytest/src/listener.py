@@ -86,13 +86,14 @@ class TestITListener(object):
             configurations_array = None
 
         for item in items:
-            if hasattr(item.function, 'test_externalID') and item.own_markers:
-                for mark in item.own_markers:
-                    if mark.name == 'parametrize':
-                        if not hasattr(item, 'array_parametrize_id'):
-                            item.array_parametrize_id = []
-                        item.array_parametrize_id.append(
-                            item.own_markers.index(mark))
+            if hasattr(item.function, 'test_externalID'):
+                if item.own_markers:
+                    for mark in item.own_markers:
+                        if mark.name == 'parametrize':
+                            if not hasattr(item, 'array_parametrize_id'):
+                                item.array_parametrize_id = []
+                            item.array_parametrize_id.append(
+                                item.own_markers.index(mark))
 
                 item.test_externalID = self.param_attribute_collector(
                     item.function.test_externalID,

@@ -72,7 +72,7 @@ Usage with command-line parameters in a CI/CD file:
 
 .. code::
 
-    pytest --testit --testrunid=${TEST_RUN_ID} --url=${URL} --privatetoken=${PRIVATE_TOKEN} --testit_proxy='{"http":"http://localhost:8888","https":"http://localhost:8888"}'
+    pytest --testit --testrunid=${TEST_RUN_ID} --testit_url=${URL} --privatetoken=${PRIVATE_TOKEN} --testit_proxy='{"http":"http://localhost:8888","https":"http://localhost:8888"}'
 
 Simple tests
 =============

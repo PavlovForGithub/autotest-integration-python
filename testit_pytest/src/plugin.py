@@ -34,7 +34,7 @@ def pytest_addoption(parser):
         '--testit_proxy',
         action="store",
         dest="set_testit_proxy",
-        metavar='{"http": "http://localhost:8888", "https": "http://localhost:8888"}',
+        metavar='{"http":"http://localhost:8888","https":"http://localhost:8888"}',
         help='Set proxy for sending requests'
     )
 
