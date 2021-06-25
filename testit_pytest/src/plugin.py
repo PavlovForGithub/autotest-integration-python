@@ -17,7 +17,7 @@ def pytest_addoption(parser):
         help='Set Test-run ID'
     )
     parser.getgroup('testit').addoption(
-        '--url',
+        '--testit_url',
         action="store",
         dest="set_url",
         metavar="https://demo.testit.software",
@@ -30,10 +30,20 @@ def pytest_addoption(parser):
         metavar="T2lKd2pLZGI4WHRhaVZUejNl",
         help='Set API secret key'
     )
+    parser.getgroup('debug').addoption(
+        '--testit_proxy',
+        action="store",
+        dest="set_testit_proxy",
+        metavar='{"http":"http://localhost:8888","https":"http://localhost:8888"}',
+        help='Set proxy for sending requests'
+    )
 
 
 def pytest_configure(config):
     if config.option.testit_report:
-        listener = TestITListener(config.option.set_testrun, config.option.set_url, config.option.set_privatetoken)
+        listener = TestITListener(config.option.set_testrun,
+                                  config.option.set_url,
+                                  config.option.set_privatetoken,
+                                  config.option.set_testit_proxy)
         config.pluginmanager.register(listener)
         testit_pytest.TestITPluginManager.get_plugin_manager().register(listener)
