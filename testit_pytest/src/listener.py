@@ -320,6 +320,12 @@ class TestITListener(object):
         return []
 
     @staticmethod
+    def _get_parameters_from(item):
+        if hasattr(item, 'test_parameters'):
+            return item.test_parameters
+        return None
+
+    @staticmethod
     def _get_classname_from(item):
         i = item.function.__qualname__.find('.')
         if i != -1:
@@ -388,7 +394,7 @@ class TestITListener(object):
                 item.array_parametrize_id,
                 item.index)
             if param_id is not None and item.function.test_labels[0][1:-1] in \
-                item.name[item.name.find('[') + 1:item.name.rfind(']')].split(
+                item.name[(item.name.find('[') + 1):(item.name.rfind(']'))].split(
                     '-')[param_id]:
                 for label in result:
                     data['labels'].append({
@@ -411,7 +417,7 @@ class TestITListener(object):
                 item.array_parametrize_id, item.index)
             if param_id is not None and item.function.test_workItemsID[0][
                 1:-1] in \
-                item.name[item.name.find('[') + 1:item.name.rfind(']')].split(
+                item.name[(item.name.find('[') + 1):(item.name.rfind(']'))].split(
                     '-')[param_id]:
                 data['workItemsID'] = result
             else:
@@ -438,6 +444,7 @@ class TestITListener(object):
             'traces': self._get_traces_from(item),
             'namespace': item.function.__module__,
             'attachments': self._get_attachments_from(item),
+            'parameters': self._get_parameters_from(item),
             'classname': self._get_classname_from(item),
             'title': self._get_title_from(item),
             'description': self._get_description_from(item),
@@ -516,13 +523,13 @@ class TestITListener(object):
     @staticmethod
     def attribute_collector_links(link, key, marks, parametrize_id, index):
         for ID in parametrize_id:
-            if link[key][link[key].find('{') + 1:link[key].rfind('}')] in \
+            if link[key][(link[key].find('{') + 1):(link[key].rfind('}'))] in \
                     marks[ID].args[0]:
                 return link[key].split('{')[0] + marks[ID].args[1][index][
-                    marks[ID].args[0].split(', ').index(link[key][
-                                                        link[key].find('{') + 1:
-                                                        link[key].rfind(
-                                                            '}')])] + \
+                    marks[ID].args[0].split(', ').index(link[key][(
+                                                        link[key].find('{') + 1):
+                                                        (link[key].rfind(
+                                                            '}'))])] + \
                     link[key].split('}')[1]
         return link[key]
 
@@ -629,7 +636,7 @@ class TestITListener(object):
                         data_item['duration'],
                         data_item['failureReasonName'],
                         data_item['message'],
-                        None,
+                        data_item['parameters'],
                         data_item['attachments']
                     )
                 )
@@ -659,11 +666,24 @@ class TestITListener(object):
     def add_attachments(self, attach_paths):
         if not hasattr(self.item, 'test_attachments'):
             self.item.test_attachments = []
+        self.item.test_attachments += self.load_attachments(attach_paths)
+
+    @testit_pytest.hookimpl
+    def load_attachments(self, attach_paths):
+        attachments = []
         for path in attach_paths:
             if os.path.isfile(path):
-                self.item.test_attachments.append(
+                attachments.append(
                     {
                         'id': self.requests.load_attachment(open(path, "rb"))
                     })
             else:
                 print(f'File ({path}) not found!')
+        return attachments
+
+    @testit_pytest.hookimpl
+    def add_parameters(self, parameters):
+        if not hasattr(self.item, 'test_parameters'):
+            self.item.test_parameters = {}
+            for key, parameter in parameters.items():
+                self.item.test_parameters[key] = str(parameter)

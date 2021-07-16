@@ -9,6 +9,9 @@ Pytest plugin for Test IT
 .. image:: https://img.shields.io/pypi/pyversions/testit-pytest?style=plastic
         :target: https://pypi.org/project/testit-pytest/
 
+.. image:: https://img.shields.io/github/contributors/testit-tms/autotest-integration-python?style=plastic
+        :target: https://github.com/testit-tms/autotest-integration-python
+
 Installation
 =============
 
