@@ -1,3 +1,4 @@
+import inspect
 import os
 import re
 from datetime import datetime
@@ -9,6 +10,8 @@ from testit_pytest import TestITPluginManager
 def inner(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
+        if hasattr(TestITPluginManager.get_plugin_manager().hook, 'add_parameters') and kwargs:
+            TestITPluginManager.get_plugin_manager().hook.add_parameters(parameters=kwargs)
         function(*args, **kwargs)
         return function
     return wrapper
@@ -86,108 +89,95 @@ def message(test_message: str):
         TestITPluginManager.get_plugin_manager().hook.add_message(test_message=test_message)
 
 
-def attachments(*attach_paths: str):
-    if hasattr(TestITPluginManager.get_plugin_manager().hook, 'add_attachments'):
-        TestITPluginManager.get_plugin_manager().hook.add_attachments(attach_paths=attach_paths)
+def attachments(*attachments_paths: str):
+    if step.step_is_active():
+        step.add_attachments(attachments_paths)
+    else:
+        if hasattr(TestITPluginManager.get_plugin_manager().hook, 'add_attachments'):
+            TestITPluginManager.get_plugin_manager().hook.add_attachments(attach_paths=attachments_paths)
 
 
 class step:
     step_stack = []
     steps_data = []
     steps_data_results = []
+    attachments = []
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self.args = args
+        if 'parameters' in kwargs and kwargs['parameters']:
+            self.parameters = kwargs['parameters']
 
     def __call__(self, *args, **kwargs):
+        parameters = {}
         if self.args and callable(self.args[0]):
             function = self.args[0]
-            dt_now = round(datetime.utcnow().timestamp() * 1000)
-            name = f'Step {str(len(self.steps_data) + 1)}'
+
             if self.step_stack:
+                name = f'Step {str(self.step_stack[0] + 1)}'
+                steps = self.steps_data[self.step_stack[0]]['steps']
                 for step_id in self.step_stack[1:]:
                     name += f'.{step_id + 1}'
-            self.steps_data = self.step_append(
-                self.steps_data,
-                self.step_stack,
-                name,
-                function.__name__
-            )
-            outcome = 'Passed'
-            try:
-                result = function(*args, **kwargs)
-            except Exception:
-                outcome = 'Failed'
-                raise
-            finally:
-                self.steps_data_results = self.result_step_append(
-                    self.steps_data,
-                    self.steps_data_results,
-                    self.step_stack,
-                    outcome,
-                    round(datetime.utcnow().timestamp() * 1000) - dt_now
-                )
-            return result
+                    steps = steps[step_id]['steps']
+                name += f'.{len(steps) + 1}'
+            else:
+                name = f'Step {str(len(self.steps_data) + 1)}'
+
+            if args:
+                step_args = inspect.getfullargspec(function).args
+                for id in range(0, len(step_args)):
+                    parameters[step_args[id]] = str(args[id])
+            if kwargs:
+                for key, parameter in kwargs.items():
+                    parameters[key] = str(parameter)
+
+            with step(name, function.__name__, parameters=parameters):
+                return function(*args, **kwargs)
         else:
             function = args[0]
 
             @wraps(function)
             def step_wrapper(*a, **kw):
-                dt_now = round(datetime.utcnow().timestamp() * 1000)
                 if self.args:
-                    if len(self.args) == 2:
-                        self.steps_data = self.step_append(
-                            self.steps_data,
-                            self.step_stack,
-                            self.args[0],
-                            self.args[1]
-                        )
-                    else:
-                        self.steps_data = self.step_append(
-                            self.steps_data,
-                            self.step_stack,
-                            self.args[0]
-                        )
-                outcome = 'Passed'
-                try:
-                    result = function(*a, **kw)
-                except Exception:
-                    outcome = 'Failed'
-                    raise
-                finally:
-                    self.steps_data_results = self.result_step_append(
-                        self.steps_data,
-                        self.steps_data_results,
-                        self.step_stack,
-                        outcome,
-                        round(datetime.utcnow().timestamp() * 1000) - dt_now
-                    )
-                return result
+                    if a:
+                        step_args = inspect.getfullargspec(function).args
+                        for id in range(0, len(step_args)):
+                            parameters[step_args[id]] = str(a[id])
+                    if kw:
+                        for key, parameter in kw.items():
+                            parameters[key] = str(parameter)
+
+                    with step(self.args[0], self.args[1], parameters=parameters) if len(self.args) == 2 else step(self.args[0], parameters=parameters):
+                        return function(*a, **kw)
             return step_wrapper
 
     def __enter__(self):
-        self.dt_now = round(datetime.utcnow().timestamp() * 1000)
-        if len(self.args) == 2:
-            self.steps_data = self.step_append(self.steps_data, self.step_stack, self.args[0], self.args[1])
-        else:
-            self.steps_data = self.step_append(self.steps_data, self.step_stack, self.args[0])
+        self.start_time = round(datetime.utcnow().timestamp() * 1000)
+        self.steps_data = self.step_append(
+            self.steps_data,
+            self.step_stack,
+            self.args[0],
+            self.args[1] if len(self.args) == 2 else None
+        )
 
     def __exit__(self, exc_type, exc_value, tb):
         outcome = 'Passed' if not exc_type else 'Failed'
+        duration = round(datetime.utcnow().timestamp() * 1000) - self.start_time
         self.steps_data_results = self.result_step_append(
                                     self.steps_data,
                                     self.steps_data_results,
                                     self.step_stack,
                                     outcome,
-                                    round(datetime.utcnow().timestamp() * 1000) - self.dt_now
+                                    duration
                                 )
 
-    def step_append(self, steps, step_stack, step_title, step_description=None):
+    def step_append(self, steps, step_stack, step_title, step_description):
         if step_stack:
             steps[step_stack[0]]['steps'] = self.step_append(steps[step_stack[0]]['steps'], step_stack[1:], step_title, step_description)
         else:
             steps.append({'title': step_title, 'description': step_description, 'steps': []})
             self.step_stack.append(len(steps) - 1)
+            self.attachments.append([])
         return steps
 
     def result_step_append(self, steps, steps_results, step_stack, outcome, duration):
@@ -198,7 +188,10 @@ class step:
             steps_results[step_stack[0]]['description'] = steps[step_stack[0]]['description']
             steps_results[step_stack[0]]['outcome'] = outcome
             steps_results[step_stack[0]]['duration'] = duration
+            steps_results[step_stack[0]]['parameters'] = self.parameters if hasattr(self, 'parameters') else None
+            steps_results[step_stack[0]]['attachments'] = self.attachments[-1]
             del self.step_stack[-1]
+            del self.attachments[-1]
         else:
             while len(steps_results) < step_stack[0] + 1:
                 steps_results.append({'stepResults': []})
@@ -212,6 +205,15 @@ class step:
         cls.steps_data = []
         cls.steps_data_results = []
         return data, result_data
+
+    @classmethod
+    def step_is_active(cls):
+        return len(cls.step_stack) != 0
+
+    @classmethod
+    def add_attachments(cls, attachments_paths):
+        if hasattr(TestITPluginManager.get_plugin_manager().hook, 'load_attachments'):
+            cls.attachments[-1] += TestITPluginManager.get_plugin_manager().hook.load_attachments(attach_paths=attachments_paths)[0]
 
 
 def search_in_environ(variable):
