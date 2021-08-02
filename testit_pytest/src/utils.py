@@ -17,25 +17,25 @@ def inner(function):
     return wrapper
 
 
-def workItemID(*test_workItemsID: int or str):
+def workItemID(*test_workitems_id: int or str):
     def outer(function):
-        function.test_workItemsID = []
-        for test_workItemID in test_workItemsID:
-            function.test_workItemsID.append(str(test_workItemID))
+        function.test_workitems_id = []
+        for test_workitem_id in test_workitems_id:
+            function.test_workitems_id.append(str(test_workitem_id))
         return inner(function)
     return outer
 
 
-def displayName(test_displayName: str):
+def displayName(test_displayname: str):
     def outer(function):
-        function.test_displayName = test_displayName
+        function.test_displayname = test_displayname
         return inner(function)
     return outer
 
 
-def externalID(test_externalID: str):
+def externalID(test_external_id: str):
     def outer(function):
-        function.test_externalID = test_externalID
+        function.test_external_id = test_external_id
         return inner(function)
     return outer
 
@@ -124,7 +124,8 @@ class step:
                 name = f'Step {str(len(self.steps_data) + 1)}'
 
             if args:
-                step_args = inspect.getfullargspec(function).args
+                function_args_name = inspect.getfullargspec(function).args
+                step_args = [arg_name for arg_name in function_args_name if arg_name not in list(kwargs)]
                 for id in range(0, len(step_args)):
                     parameters[step_args[id]] = str(args[id])
             if kwargs:
@@ -140,14 +141,18 @@ class step:
             def step_wrapper(*a, **kw):
                 if self.args:
                     if a:
-                        step_args = inspect.getfullargspec(function).args
+                        function_args_name = inspect.getfullargspec(function).args
+                        step_args = [arg_name for arg_name in function_args_name if arg_name not in list(kw)]
                         for id in range(0, len(step_args)):
                             parameters[step_args[id]] = str(a[id])
                     if kw:
                         for key, parameter in kw.items():
                             parameters[key] = str(parameter)
 
-                    with step(self.args[0], self.args[1], parameters=parameters) if len(self.args) == 2 else step(self.args[0], parameters=parameters):
+                    with step(
+                            self.args[0], self.args[1], parameters=parameters) if len(self.args) == 2\
+                            else step(self.args[0], parameters=parameters
+                        ):
                         return function(*a, **kw)
             return step_wrapper
 
@@ -240,4 +245,6 @@ def url_check(url):
     if not re.fullmatch(r'^(?:(?:(?:https?|ftp):)?//)?(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-zA-Z0-9\u00a1-\uffff][a-zA-Z0-9\u00a1-\uffff_-]{0,62})?[a-zA-Z0-9\u00a1-\uffff]\.)+(?:[a-zA-Z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?(?:[/?#]\S*)?$', url):
         print('The wrong URL!')
         raise SystemExit
+    if url[-1] == '/':
+        return url[:-1]
     return url
