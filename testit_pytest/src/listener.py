@@ -86,7 +86,7 @@ class TestITListener(object):
             configurations_array = None
 
         for item in items:
-            if hasattr(item.function, 'test_externalID'):
+            if hasattr(item.function, 'test_external_id'):
                 if item.own_markers:
                     for mark in item.own_markers:
                         if mark.name == 'parametrize':
@@ -95,39 +95,40 @@ class TestITListener(object):
                             item.array_parametrize_id.append(
                                 item.own_markers.index(mark))
 
-                item.test_externalID = self.param_attribute_collector(
-                    item.function.test_externalID,
+                item.test_external_id = self.param_attribute_collector(
+                    item.function.test_external_id,
                     item.own_markers,
                     item.array_parametrize_id,
                     index) if hasattr(item,
                                       'array_parametrize_id'
-                                      ) else item.function.test_externalID
+                                      ) else item.function.test_external_id
 
                 item.index = index
                 item_id = items.index(item)
                 index = index + 1 if item_id + \
-                    1 < len(items) and item.originalname == \
-                    items[item_id + 1].originalname else 0
+                                     1 < len(items) and item.originalname == \
+                                     items[item_id + 1].originalname else 0
 
-                if (
-                    configurations_array
-                    and item.test_externalID in configurations_array
-                ):
-                    item.configurationID = configurations_array[
-                        item.test_externalID]
-                    new_items.append(item)
+                if configurations_array:
+                    if item.test_external_id in configurations_array:
+                        item.test_configuration_id = configurations_array[
+                            item.test_external_id]
+                        new_items.append(item)
+                else:
+                    item_id = session.items.index(item)
+                    session.items[item_id].test_configuration_id = self.configuration_id
         if configurations_array:
-            session.items = new_items
-            if not session.items:
+            if not new_items:
                 self.requests.testrun_activity(self.testrun_id, 'stop')
                 print('The specified tests were not found!')
                 raise SystemExit
+            session.items = new_items
 
     @pytest.hookimpl
     def pytest_runtest_protocol(self, item):
-        if hasattr(item.function, 'test_externalID'):
+        if hasattr(item.function, 'test_external_id'):
             if not hasattr(item.function,
-                           'test_displayName') and not item.function.__doc__:
+                           'test_displayname') and not item.function.__doc__:
                 self.item = None
                 raise Exception(
                     f'{item.originalname} must have @testit.displayName or documentation!')
@@ -140,31 +141,7 @@ class TestITListener(object):
         yield
         if self.item:
             steps_data, results_steps_data = step.get_steps_data()
-            if fixturedef.scope != 'function':
-                if not hasattr(self.item,
-                               f'test_{fixturedef.scope}_setup_steps'):
-                    setattr(
-                        self.item, f'test_{fixturedef.scope}_setup_steps',
-                        [] + steps_data)
-                    setattr(self.item,
-                            f'test_{fixturedef.scope}_setup_results_steps', [
-                            ] + results_steps_data)
-                    setattr(self.item, f'{fixturedef.scope}_setup_number', 1)
-                else:
-                    setattr(self.item, f'test_{fixturedef.scope}_setup_steps',
-                            getattr(
-                                self.item,
-                                f'test_{fixturedef.scope}_setup_steps') + steps_data)
-                    setattr(self.item,
-                            f'test_{fixturedef.scope}_setup_results_steps',
-                            getattr(
-                                self.item,
-                                f'test_{fixturedef.scope}_setup_results_steps') + results_steps_data)
-                    setattr(self.item, f'{fixturedef.scope}_setup_number',
-                            getattr(
-                                self.item,
-                                f'{fixturedef.scope}_setup_number') + 1)
-            else:
+            if fixturedef.scope == 'function':
                 if not hasattr(self.item, 'test_method_setup_steps'):
                     self.item.test_method_setup_steps = []
                     self.item.test_method_setup_results_steps = []
@@ -181,59 +158,11 @@ class TestITListener(object):
         self.item.test_results_steps = test_results_steps
 
     @pytest.hookimpl
-    def pytest_fixture_post_finalizer(self, fixturedef, request):
+    def pytest_fixture_post_finalizer(self, fixturedef):
         if not self.item:
             return
         teardown_steps, teardown_results_steps = step.get_steps_data()
-        if fixturedef.scope != 'function':
-            item_id = request.session.items.index(self.item)
-            while not hasattr(request.session.items[item_id],
-                              f'{fixturedef.scope}_setup_number'):
-                if not hasattr(request.session.items[item_id],
-                               f'test_{fixturedef.scope}_teardown_steps'):
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_steps',
-                            [] + teardown_steps)
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_results_steps',
-                            [] + teardown_results_steps)
-                else:
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_steps',
-                            getattr(request.session.items[item_id],
-                                    f'test_{fixturedef.scope}_teardown_steps') + teardown_steps)
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_results_steps',
-                            getattr(request.session.items[item_id],
-                                    f'test_{fixturedef.scope}_teardown_results_steps') + teardown_results_steps)
-                item_id -= 1
-            if hasattr(request.session.items[item_id],
-                       f'{fixturedef.scope}_setup_number') and getattr(
-                    request.session.items[item_id],
-                    f'{fixturedef.scope}_setup_number') != 0:
-                if not hasattr(request.session.items[item_id],
-                               f'test_{fixturedef.scope}_teardown_steps'):
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_steps', [
-                    ] + teardown_steps)
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_results_steps', [
-                    ] + teardown_results_steps)
-                else:
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_steps', getattr(
-                            request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_steps') + teardown_steps)
-                    setattr(request.session.items[item_id],
-                            f'test_{fixturedef.scope}_teardown_results_steps',
-                            getattr(
-                                request.session.items[item_id],
-                                f'test_{fixturedef.scope}_teardown_results_steps') + teardown_results_steps)
-                setattr(request.session.items[item_id],
-                        f'{fixturedef.scope}_setup_number', getattr(
-                        request.session.items[item_id],
-                        f'{fixturedef.scope}_setup_number') - 1)
-        else:
+        if fixturedef.scope == 'function':
             if not hasattr(self.item, 'test_method_teardown_steps'):
                 self.item.test_method_teardown_steps = []
                 self.item.test_method_teardown_results_steps = []
@@ -249,12 +178,93 @@ class TestITListener(object):
                 self.item.test_duration = 0
             self.item.test_duration += report.duration * 1000
 
-    # TODO: move private methods into separate classes according to the purpose of the object
-    def _get_configuration_id_from(self, item):
-        if hasattr(item, 'configurationID'):
-            return item.configurationID
-        return self.configuration_id
+    @pytest.hookimpl
+    def pytest_runtest_logfinish(self):
+        if not self.item:
+            return
+        data_item = self.attribute_collector(self.item)
+        if data_item:
+            autotest = self.requests.get_autotest(
+                data_item['externalID'], self.project_id).json()
+            if not autotest:
+                autotest_id = self.requests.create_autotest(
+                    JSONFixture.create_autotest(
+                        data_item['externalID'],
+                        self.project_id,
+                        data_item['autoTestName'],
+                        data_item['namespace'],
+                        data_item['classname'],
+                        data_item['links'],
+                        data_item['steps'],
+                        data_item['setUp'],
+                        data_item['tearDown'],
+                        data_item['title'],
+                        data_item['description'],
+                        data_item['labels']
+                    )
+                )
+            else:
+                autotest_id = autotest[0]['id']
+                if data_item['testResult'] == 'Passed':
+                    self.requests.update_autotest(
+                        JSONFixture.update_autotest(
+                            data_item['externalID'],
+                            self.project_id,
+                            data_item['autoTestName'],
+                            data_item['namespace'],
+                            data_item['classname'],
+                            data_item['links'],
+                            data_item['steps'],
+                            data_item['setUp'],
+                            data_item['tearDown'],
+                            data_item['title'],
+                            data_item['description'],
+                            data_item['labels'],
+                            autotest_id
+                        )
+                    )
+                else:
+                    self.requests.update_autotest(
+                        JSONFixture.update_autotest(
+                            data_item['externalID'],
+                            self.project_id,
+                            autotest[0]['name'],
+                            autotest[0]['namespace'],
+                            autotest[0]['classname'],
+                            data_item['links'],
+                            autotest[0]['steps'],
+                            autotest[0]['setup'],
+                            autotest[0]['teardown'],
+                            autotest[0]['title'],
+                            autotest[0]['description'],
+                            autotest[0]['labels'],
+                            autotest_id
+                        )
+                    )
 
+            for workitem_id in data_item['workItemsID']:
+                self.requests.link_autotest(autotest_id, workitem_id)
+
+            self.requests.set_results_for_testrun(
+                self.testrun_id,
+                [JSONFixture.set_results_for_testrun(
+                    data_item['externalID'],
+                    data_item['configurationID'],
+                    data_item['testResult'],
+                    data_item['stepResults'],
+                    data_item['setUpResults'],
+                    data_item['tearDownResults'],
+                    data_item['traces'],
+                    data_item['resultLinks'],
+                    data_item['duration'],
+                    data_item['failureReasonName'],
+                    data_item['message'],
+                    data_item['parameters'],
+                    data_item['attachments']
+                )]
+            )
+
+    # TODO: move private methods into separate classes according to the purpose of the object
     @staticmethod
     def _get_steps_from(item):
         if hasattr(item, 'test_steps'):
@@ -268,32 +278,28 @@ class TestITListener(object):
         return []
 
     @staticmethod
-    def _get_setup_from(tree_setup_steps):
-        return tree_setup_steps['session'] + \
-            tree_setup_steps['module'] + \
-            tree_setup_steps['class'] + \
-            tree_setup_steps['method']
+    def _get_setup_from(item):
+        if hasattr(item, 'test_method_setup_steps'):
+            return item.test_method_setup_steps
+        return []
 
     @staticmethod
-    def _get_setup_results_from(tree_setup_steps):
-        return tree_setup_steps['session_results'] + \
-            tree_setup_steps['module_results'] + \
-            tree_setup_steps['class_results'] + \
-            tree_setup_steps['method_results']
+    def _get_setup_results_from(item):
+        if hasattr(item, 'test_method_setup_steps'):
+            return item.test_method_setup_results_steps
+        return []
 
     @staticmethod
-    def _get_teardown_from(tree_teardown_steps):
-        return tree_teardown_steps['method'] + \
-            tree_teardown_steps['class'] + \
-            tree_teardown_steps['module'] + \
-            tree_teardown_steps['session']
+    def _get_teardown_from(item):
+        if hasattr(item, 'test_method_teardown_steps'):
+            return item.test_method_teardown_steps
+        return []
 
     @staticmethod
-    def _get_teardown_results_from(tree_teardown_steps):
-        return tree_teardown_steps['method_results'] + \
-            tree_teardown_steps['class_results'] + \
-            tree_teardown_steps['module_results'] + \
-            tree_teardown_steps['session_results']
+    def _get_teardown_results_from(item):
+        if hasattr(item, 'test_method_teardown_results_steps'):
+            return item.test_method_teardown_results_steps
+        return []
 
     @staticmethod
     def _get_result_links_from(item):
@@ -332,70 +338,76 @@ class TestITListener(object):
             return item.function.__qualname__[:i]
         return None
 
-    def _set_links(self, item, data):
+    @staticmethod
+    def _set_links(item, data):
         if hasattr(item, 'array_parametrize_id'):
             for link in item.function.test_links:
                 data['links'].append({})
-                data['links'][-1]['url'] = self.attribute_collector_links(link,
-                                                                          'url',
-                                                                          item.own_markers,
-                                                                          item.array_parametrize_id,
-                                                                          item.index)
+                data['links'][-1]['url'] = TestITListener.attribute_collector_links(
+                                                link,
+                                                'url',
+                                                item.own_markers,
+                                                item.array_parametrize_id,
+                                                item.index)
                 if link['title']:
-                    data['links'][-1]['title'] = self.attribute_collector_links(
-                        link,
-                        'title',
-                        item.own_markers,
-                        item.array_parametrize_id,
-                        item.index)
+                    data['links'][-1]['title'] = TestITListener.attribute_collector_links(
+                                                    link,
+                                                    'title',
+                                                    item.own_markers,
+                                                    item.array_parametrize_id,
+                                                    item.index)
                 if link['type']:
-                    data['links'][-1]['type'] = self.attribute_collector_links(
-                        link,
-                        'type',
-                        item.own_markers,
-                        item.array_parametrize_id,
-                        item.index)
+                    data['links'][-1]['type'] = TestITListener.attribute_collector_links(
+                                                    link,
+                                                    'type',
+                                                    item.own_markers,
+                                                    item.array_parametrize_id,
+                                                    item.index)
                 if link['description']:
                     data['links'][-1][
-                        'description'] = self.attribute_collector_links(link,
-                                                                        'description',
-                                                                        item.own_markers,
-                                                                        item.array_parametrize_id,
-                                                                        item.index)
+                        'description'] = TestITListener.attribute_collector_links(
+                                            link,
+                                            'description',
+                                            item.own_markers,
+                                            item.array_parametrize_id,
+                                            item.index)
         else:
             data['links'] = item.function.test_links
 
-    def _get_title_from(self, item):
+    @staticmethod
+    def _get_title_from(item):
         if not hasattr(item.function, 'test_title'):
             return None
         if hasattr(item, 'array_parametrize_id'):
-            return self.param_attribute_collector(item.function.test_title,
-                                                  item.own_markers,
-                                                  item.array_parametrize_id,
-                                                  item.index)
+            return TestITListener.param_attribute_collector(item.function.test_title,
+                                                            item.own_markers,
+                                                            item.array_parametrize_id,
+                                                            item.index)
         return item.function.test_title
 
-    def _get_description_from(self, item):
+    @staticmethod
+    def _get_description_from(item):
         if not hasattr(item.function, 'test_description'):
             return None
         if hasattr(item, 'array_parametrize_id'):
-            return self.param_attribute_collector(
+            return TestITListener.param_attribute_collector(
                 item.function.test_description,
                 item.own_markers,
                 item.array_parametrize_id,
                 item.index)
         return item.function.test_description
 
-    def _set_labels(self, item, data):
+    @staticmethod
+    def _set_labels(item, data):
         if hasattr(item, 'array_parametrize_id'):
-            result, param_id = self.mass_param_attribute_collector(
+            result, param_id = TestITListener.mass_param_attribute_collector(
                 item.function.test_labels[0],
                 item.own_markers,
                 item.array_parametrize_id,
                 item.index)
             if param_id is not None and item.function.test_labels[0][1:-1] in \
-                item.name[(item.name.find('[') + 1):(item.name.rfind(']'))].split(
-                    '-')[param_id]:
+                    item.name[(item.name.find('[') + 1):(item.name.rfind(']'))].split(
+                        '-')[param_id]:
                 for label in result:
                     data['labels'].append({
                         'name': label
@@ -410,44 +422,46 @@ class TestITListener(object):
                     'name': label
                 })
 
-    def _set_work_items_id(self, item, data):
+    @staticmethod
+    def _set_workitems_id(item, data):
         if hasattr(item, 'array_parametrize_id'):
-            result, param_id = self.mass_param_attribute_collector(
-                item.function.test_workItemsID[0], item.own_markers,
+            result, param_id = TestITListener.mass_param_attribute_collector(
+                item.function.test_workitems_id[0], item.own_markers,
                 item.array_parametrize_id, item.index)
-            if param_id is not None and item.function.test_workItemsID[0][
-                1:-1] in \
-                item.name[(item.name.find('[') + 1):(item.name.rfind(']'))].split(
-                    '-')[param_id]:
+            if param_id is not None and item.function.test_workitems_id[0][
+                                        1:-1] in \
+                    item.name[(item.name.find('[') + 1):(item.name.rfind(']'))].split(
+                        '-')[param_id]:
                 data['workItemsID'] = result
             else:
                 data['workItemsID'] = [result]
         else:
-            data['workItemsID'] = item.function.test_workItemsID
+            data['workItemsID'] = item.function.test_workitems_id
 
-    def attribute_collector(self, item, tree_setup_steps, tree_teardown_steps):
+    @staticmethod
+    def attribute_collector(item):
         # TODO: need to refactoring that method
-        if not hasattr(item.function, 'test_externalID'):
+        if not hasattr(item.function, 'test_external_id'):
             return None
         data = {
-            'externalID': item.test_externalID,
-            'configurationID': self._get_configuration_id_from(item),
-            'steps': self._get_steps_from(item),
-            'stepResults': self._get_step_results_from(item),
-            'setUp': self._get_setup_from(tree_setup_steps),
-            'setUpResults': self._get_setup_results_from(tree_setup_steps),
-            'tearDown': self._get_teardown_from(tree_teardown_steps),
-            'tearDownResults': self._get_teardown_results_from(
-                tree_teardown_steps),
-            'resultLinks': self._get_result_links_from(item),
-            'duration': self._get_duration_from(item),
-            'traces': self._get_traces_from(item),
+            'externalID': item.test_external_id,
+            'configurationID': item.test_configuration_id,
+            'steps': TestITListener._get_steps_from(item),
+            'stepResults': TestITListener._get_step_results_from(item),
+            'setUp': TestITListener._get_setup_from(item),
+            'setUpResults': TestITListener._get_setup_results_from(item),
+            'tearDown': TestITListener._get_teardown_from(item),
+            'tearDownResults': TestITListener._get_teardown_results_from(
+                item),
+            'resultLinks': TestITListener._get_result_links_from(item),
+            'duration': TestITListener._get_duration_from(item),
+            'traces': TestITListener._get_traces_from(item),
             'namespace': item.function.__module__,
-            'attachments': self._get_attachments_from(item),
-            'parameters': self._get_parameters_from(item),
-            'classname': self._get_classname_from(item),
-            'title': self._get_title_from(item),
-            'description': self._get_description_from(item),
+            'attachments': TestITListener._get_attachments_from(item),
+            'parameters': TestITListener._get_parameters_from(item),
+            'classname': TestITListener._get_classname_from(item),
+            'title': TestITListener._get_title_from(item),
+            'description': TestITListener._get_description_from(item),
             'testResult': 'Failed' if hasattr(item,
                                               'test_traces') else 'Passed',
             'failureReasonName': 'TestDefect' if hasattr(item,
@@ -459,18 +473,18 @@ class TestITListener(object):
         }
 
         if hasattr(item.function, 'test_links'):
-            self._set_links(item, data)
+            TestITListener._set_links(item, data)
 
         if hasattr(item.function, 'test_labels'):
-            self._set_labels(item, data)
+            TestITListener._set_labels(item, data)
 
-        if hasattr(item.function, 'test_workItemsID'):
-            self._set_work_items_id(item, data)
+        if hasattr(item.function, 'test_workitems_id'):
+            TestITListener._set_workitems_id(item, data)
 
         if item.own_markers:
             for mark in item.own_markers:
                 if mark.name == 'skip' or mark.name == 'skipif' and mark.args[
-                        0]:
+                    0]:
                     data['testResult'] = 'Skipped'
                     data['failureReasonName'] = None
                     if mark.kwargs:
@@ -479,15 +493,15 @@ class TestITListener(object):
         if hasattr(item, 'test_message'):
             data['message'] = item.test_message
 
-        if hasattr(item.function, 'test_displayName'):
+        if hasattr(item.function, 'test_displayname'):
             if hasattr(item, 'array_parametrize_id'):
-                data['autoTestName'] = self.param_attribute_collector(
-                    item.function.test_displayName,
+                data['autoTestName'] = TestITListener.param_attribute_collector(
+                    item.function.test_displayname,
                     item.own_markers,
                     item.array_parametrize_id,
                     item.index)
             else:
-                data['autoTestName'] = item.function.test_displayName
+                data['autoTestName'] = item.function.test_displayname
         elif item.function.__doc__:
             data['autoTestName'] = item.function.__doc__
         else:
@@ -509,7 +523,7 @@ class TestITListener(object):
                                                         attribute.find(
                                                             '{') + 1:attribute.rfind(
                                                             '}')])] + \
-                    attribute.split('}')[1]
+                       attribute.split('}')[1]
         return attribute
 
     @staticmethod
@@ -527,10 +541,10 @@ class TestITListener(object):
                     marks[ID].args[0]:
                 return link[key].split('{')[0] + marks[ID].args[1][index][
                     marks[ID].args[0].split(', ').index(link[key][(
-                                                        link[key].find('{') + 1):
-                                                        (link[key].rfind(
-                                                            '}'))])] + \
-                    link[key].split('}')[1]
+                                                                          link[key].find('{') + 1):
+                                                                  (link[key].rfind(
+                                                                      '}'))])] + \
+                       link[key].split('}')[1]
         return link[key]
 
     @staticmethod
@@ -545,106 +559,6 @@ class TestITListener(object):
                 tree_steps[scope] = []
                 tree_steps[f'{scope}_results'] = []
         return tree_steps
-
-    @pytest.hookimpl
-    def pytest_sessionfinish(self, session):
-        tree_setup_steps = {}
-        tree_teardown_steps = {}
-        tests_results_data = []
-        for item in session.items:
-            tree_setup_steps = self.form_tree_steps(
-                item, tree_setup_steps, 'setup')
-            tree_teardown_steps = self.form_tree_steps(
-                item, tree_teardown_steps, 'teardown')
-            data_item = self.attribute_collector(
-                item,
-                tree_setup_steps,
-                tree_teardown_steps
-            )
-            if data_item:
-                autotest = self.requests.get_autotest(
-                    data_item['externalID'], self.project_id).json()
-                if not autotest:
-                    autotest_id = self.requests.create_autotest(
-                        JSONFixture.create_autotest(
-                            data_item['externalID'],
-                            self.project_id,
-                            data_item['autoTestName'],
-                            data_item['namespace'],
-                            data_item['classname'],
-                            data_item['links'],
-                            data_item['steps'],
-                            data_item['setUp'],
-                            data_item['tearDown'],
-                            data_item['title'],
-                            data_item['description'],
-                            data_item['labels']
-                        )
-                    )
-                else:
-                    autotest_id = autotest[0]['id']
-                    if data_item['testResult'] == 'Passed':
-                        self.requests.update_autotest(
-                            JSONFixture.update_autotest(
-                                data_item['externalID'],
-                                self.project_id,
-                                data_item['autoTestName'],
-                                data_item['namespace'],
-                                data_item['classname'],
-                                data_item['links'],
-                                data_item['steps'],
-                                data_item['setUp'],
-                                data_item['tearDown'],
-                                data_item['title'],
-                                data_item['description'],
-                                data_item['labels'],
-                                autotest_id
-                            )
-                        )
-                    else:
-                        self.requests.update_autotest(
-                            JSONFixture.update_autotest(
-                                data_item['externalID'],
-                                self.project_id,
-                                autotest[0]['name'],
-                                autotest[0]['namespace'],
-                                autotest[0]['classname'],
-                                data_item['links'],
-                                autotest[0]['steps'],
-                                autotest[0]['setup'],
-                                autotest[0]['teardown'],
-                                autotest[0]['title'],
-                                autotest[0]['description'],
-                                autotest[0]['labels'],
-                                autotest_id
-                            )
-                        )
-
-                for workitem_id in data_item['workItemsID']:
-                    self.requests.link_autotest(autotest_id, workitem_id)
-
-                tests_results_data.append(
-                    JSONFixture.set_results_for_testrun(
-                        data_item['externalID'],
-                        data_item['configurationID'],
-                        data_item['testResult'],
-                        data_item['stepResults'],
-                        data_item['setUpResults'],
-                        data_item['tearDownResults'],
-                        data_item['traces'],
-                        data_item['resultLinks'],
-                        data_item['duration'],
-                        data_item['failureReasonName'],
-                        data_item['message'],
-                        data_item['parameters'],
-                        data_item['attachments']
-                    )
-                )
-        if tests_results_data:
-            self.requests.set_results_for_testrun(
-                self.testrun_id,
-                tests_results_data
-            )
 
     @testit_pytest.hookimpl
     def add_link(self, link_url, link_title, link_type, link_description):

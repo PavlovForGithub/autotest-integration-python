@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='testit-pytest',
-    version='0.2.6',
+    version='0.2.8',
     description='Pytest plugin for Test IT',
     long_description=open('README.rst').read(),
     url='https://pypi.org/project/testit-pytest/',
