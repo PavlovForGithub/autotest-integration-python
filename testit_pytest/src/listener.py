@@ -56,6 +56,9 @@ class TestITListener(object):
             except configparser.NoOptionError as noe:
                 print(f"Option not set, cause: {noe}")
 
+            if parser.has_option('testit', 'testrun_name'):
+                self.testrun_name = search_in_environ(
+                    parser.get('testit', 'testrun_name'))
             if parser.has_option('testit', 'testrunID'):
                 self.testrun_id = uuid_check(search_in_environ(
                     parser.get('testit',
@@ -77,6 +80,13 @@ class TestITListener(object):
             self.project_id, data_autotests = self.requests.get_testrun(
                 self.testrun_id)
             configurations_array = configurations_parser(data_autotests)
+        elif hasattr(self, 'testrun_name'):
+            self.testrun_id = self.requests.create_testrun(
+                JSONFixture.create_testrun(
+                    self.project_id,
+                    f'{self.testrun_name} - {datetime.today().strftime("%d %b %Y %H:%M:%S")}'))
+            self.requests.testrun_activity(self.testrun_id, 'start')
+            configurations_array = None
         else:
             self.testrun_id = self.requests.create_testrun(
                 JSONFixture.create_testrun(
